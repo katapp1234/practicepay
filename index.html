@@ -146,32 +146,11 @@
     </div>
 
     <div class="group">
-      <h3>Numbers on the tags mean…</h3>
-      <p>Example: with “Dollars”, Item|500 costs $500. With “Cents”, Item|500 costs $5.</p>
-      <div class="seg" id="sUnits"><button data-v="dollars">Dollars</button><button data-v="cents">Cents</button></div>
-    </div>
-
-    <div class="group">
       <h3>Screens</h3>
       <label class="toggle">On “not enough money”, also show the price and what they have <input type="checkbox" id="sDetail"></label>
       <label class="toggle">Show the “🔊 Hear it” button <input type="checkbox" id="sSpeak"></label>
     </div>
 
-    <div class="group">
-      <h3>Make a tag link</h3>
-      <p>Write this link onto a tag as a <b>URL / Link</b> record (for example with the free NFC Tools app).</p>
-      <div class="line">
-        <div class="seg" id="sType"><button data-v="Item">Item (pay)</button><button data-v="Paycheck">Paycheck (get paid)</button></div>
-      </div>
-      <div class="line" style="margin-top:10px">
-        <input type="number" id="sAmt" inputmode="decimal" min="0" step="0.01" value="5" aria-label="Tag amount">
-        <button class="btn grey" id="sCopy">Copy link</button>
-      </div>
-      <div class="out" id="sOut"></div>
-      <div class="line" style="margin-top:10px">
-        <button class="btn grey" id="sTest">Try this tag now</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -181,7 +160,7 @@
   const SAME_TAG_WINDOW_MS = 4000; // ignore the same tag read twice this quickly
   const $ = id => document.getElementById(id);
 
-  const defaults = { balance: 0, history: [], units: 'dollars', showDetail: true, showSpeak: true, last: null };
+  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, last: null };
   let state = load();
 
   function load() {
@@ -197,13 +176,11 @@
       minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(cents / 100);
   }
 
-  // Accepts "Item|500", "Paycheck|1000", case-insensitive; ":" also works as the separator.
+  // Tag amounts are always in cents: "Item|500" = $5, "Paycheck|1000" = $10.
   function parseTag(raw) {
-    const m = String(raw).trim().match(/^(item|paycheck)\s*[|:]\s*\$?\s*(\d+(?:\.\d{1,2})?)$/i);
+    const m = String(raw).trim().match(/^(item|paycheck)\s*[|:]\s*(\d+)$/i);
     if (!m) return null;
-    const n = parseFloat(m[2]);
-    const cents = state.units === 'cents' ? Math.round(n) : Math.round(n * 100);
-    return { kind: m[1].toLowerCase(), cents };
+    return { kind: m[1].toLowerCase(), cents: parseInt(m[2], 10) };
   }
 
   function handleTag(raw) {
@@ -304,22 +281,13 @@
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => lock.addEventListener(t, endHold));
   lock.addEventListener('contextmenu', e => e.preventDefault());
 
-  let tagType = 'Item';
   function openSheet() {
     endHold();
     $('sBalance').value = (state.balance / 100).toFixed(2);
     $('sDetail').checked = state.showDetail;
     $('sSpeak').checked = state.showSpeak;
-    paintSegs(); updateLink();
     $('sheet').classList.add('show');
   }
-  function paintSegs() {
-    document.querySelectorAll('#sUnits button').forEach(b => b.classList.toggle('on', b.dataset.v === state.units));
-    document.querySelectorAll('#sType button').forEach(b => b.classList.toggle('on', b.dataset.v === tagType));
-  }
-  function tagText() { return tagType + '|' + ($('sAmt').value || '0'); }
-  function tagLink() { return location.origin + location.pathname + '?tag=' + encodeURIComponent(tagText()); }
-  function updateLink() { $('sOut').textContent = tagLink(); }
 
   $('sDone').onclick = () => $('sheet').classList.remove('show');
   $('sSetBal').onclick = () => {
@@ -329,17 +297,8 @@
   };
   $('sZero').onclick = () => { if (confirm('Set the card to $0?')) { state.balance = 0; save(); render(); $('sBalance').value = '0.00'; } };
   $('sClear').onclick = () => { if (confirm('Clear the recent list?')) { state.history = []; save(); render(); } };
-  $('sUnits').onclick = e => { const v = e.target.dataset.v; if (v) { state.units = v; save(); paintSegs(); } };
-  $('sType').onclick = e => { const v = e.target.dataset.v; if (v) { tagType = v; paintSegs(); updateLink(); } };
   $('sDetail').onchange = e => { state.showDetail = e.target.checked; save(); };
   $('sSpeak').onchange = e => { state.showSpeak = e.target.checked; save(); };
-  $('sAmt').oninput = updateLink;
-  $('sCopy').onclick = async () => {
-    try { await navigator.clipboard.writeText(tagLink()); $('sCopy').textContent = 'Copied!'; }
-    catch (e) { $('sCopy').textContent = 'Select the link below'; }
-    setTimeout(() => $('sCopy').textContent = 'Copy link', 1500);
-  };
-  $('sTest').onclick = () => { $('sheet').classList.remove('show'); state.last = null; handleTag(tagText()); };
 
   // ---------- A tag opened this page ----------
   render();
