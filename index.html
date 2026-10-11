@@ -236,7 +236,7 @@
     addHistory('item', tag.cents);
     save(); render();
     show({ kind: 'paid', title: 'Done', amount: money(tag.cents),
-      msg: 'You paid ' + money(tag.cents) + '.', detail: 'You have ' + money(state.balance) + ' left.' });
+      msg: 'You spent ' + money(tag.cents) + '.', detail: 'You have ' + money(state.balance) + ' left.' });
   }
 
   function addHistory(kind, cents) {
