@@ -54,8 +54,22 @@
   .plus { color: var(--green); } .empty { padding: 18px; color: var(--muted); font-size: 16px; }
 
   /* Result screen */
-  .overlay { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 24px 24px calc(24px + env(safe-area-inset-bottom)); background: rgba(0,0,0,.97); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+  .overlay { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; overflow-y: auto;
+    text-align: center; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); background: rgba(0,0,0,.97); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+  .o-inner { margin: auto 0; display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .overlay.quiz .badge { width: 110px; height: 110px; font-size: 56px; }
+
+  /* "How much more do you need?" question */
+  .quiz-box { width: 100%; max-width: 380px; margin-top: 24px; padding: 18px; border-radius: 20px; background: var(--panel); }
+  .quiz-box label { display: block; font-size: 22px; font-weight: 800; line-height: 1.3; margin-bottom: 14px; }
+  .quiz-row { display: flex; gap: 10px; align-items: stretch; }
+  .money-in { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 0 14px; border-radius: 14px; background: #000; border: 2px solid #3a3a3c; }
+  .money-in:focus-within { border-color: var(--qc, var(--orange)); }
+  .money-in span { font-size: 30px; font-weight: 800; color: var(--muted); }
+  .money-in input { flex: 1; min-width: 0; font: inherit; font-size: 30px; font-weight: 800; border: none; outline: none; background: transparent; color: #fff; padding: 12px 0; }
+  .quiz-row .big { padding: 14px 20px; font-size: 22px; background: var(--qc, var(--orange)); }
+  .quiz-fb { min-height: 1.4em; margin-top: 14px; font-size: 21px; font-weight: 700; line-height: 1.35; }
+  .quiz-fb.right { color: var(--green); } .quiz-fb.wrong { color: #ffd60a; }
   .overlay.show { display: flex; animation: fade .2s ease-out; }
   @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
   .badge { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; font-size: 76px; animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
@@ -117,14 +131,24 @@
 
 <!-- Result screen -->
 <div class="overlay" id="overlay" role="alertdialog" aria-modal="true" aria-labelledby="oTitle">
+  <div class="o-inner">
   <div class="badge" id="oBadge"></div>
   <div class="o-title" id="oTitle"></div>
   <div class="o-amount" id="oAmount"></div>
   <div class="o-msg" id="oMsg"></div>
   <div class="o-detail" id="oDetail"></div>
+  <form class="quiz-box" id="quiz" hidden>
+    <label for="qIn" id="qLabel">How much more money do you need?</label>
+    <div class="quiz-row">
+      <div class="money-in"><span>$</span><input id="qIn" type="text" inputmode="decimal" autocomplete="off" aria-label="Your answer, in dollars"></div>
+      <button class="big" type="submit">Check</button>
+    </div>
+    <div class="quiz-fb" id="qFb" aria-live="polite"></div>
+  </form>
   <div class="o-buttons">
     <button class="big ghost" id="oSay">🔊 Hear it</button>
     <button class="big" id="oOk">OK</button>
+  </div>
   </div>
 </div>
 
@@ -149,6 +173,8 @@
       <h3>Screens</h3>
       <label class="toggle">On “not enough money”, also show the price and what they have <input type="checkbox" id="sDetail"></label>
       <label class="toggle">Show the “🔊 Hear it” button <input type="checkbox" id="sSpeak"></label>
+      <label class="toggle">On “not enough money”, ask “How much more money do you need?” <input type="checkbox" id="sAsk"></label>
+      <label class="toggle">After getting paid or spending, ask how much money they have now <input type="checkbox" id="sMath"></label>
     </div>
 
   </div>
@@ -160,7 +186,7 @@
   const SAME_TAG_WINDOW_MS = 4000; // ignore the same tag read twice this quickly
   const $ = id => document.getElementById(id);
 
-  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, last: null };
+  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, askNeed: false, askMath: false, last: null };
   let state = load();
 
   function load() {
@@ -194,24 +220,50 @@
       return show({ kind: 'unknown', title: 'Hmm…', msg: "I don't know this tag. Please ask for help." });
     }
 
+    const had = state.balance;
+
     if (tag.kind === 'paycheck') {
       state.balance += tag.cents;
       addHistory('paycheck', tag.cents);
       save(); render();
+      if (state.askMath) {
+        // Hide the new total: working it out is the question.
+        return show({ kind: 'paycheck', title: 'You got paid!', amount: '+' + money(tag.cents),
+          msg: 'You had ' + money(had) + ' and just earned ' + money(tag.cents) + ' more.',
+          quiz: { question: 'How much money do you have now?', answer: state.balance,
+            hint: money(had) + ' plus ' + money(tag.cents) + '.',
+            right: 'Yes! You have ' + money(state.balance) + ' now.',
+            reveal: 'You have ' + money(state.balance) + ' now. ' + money(had) + ' + ' + money(tag.cents) + ' = ' + money(state.balance) + '.' } });
+      }
       return show({ kind: 'paycheck', title: 'You got paid!', amount: '+' + money(tag.cents),
         msg: 'Now you have ' + money(state.balance) + '.' });
     }
 
     if (tag.cents > state.balance) {
       save();
+      // The question needs the price and balance on screen, so it always shows them.
+      const ask = state.askNeed;
+      const need = tag.cents - state.balance;
       return show({ kind: 'overdraft', title: 'Uh oh',
         msg: "Uh oh you don't have enough money, please put the item back.",
-        detail: state.showDetail ? 'It costs ' + money(tag.cents) + '.<br>You have ' + money(state.balance) + '.' : '' });
+        detail: (state.showDetail || ask) ? 'It costs ' + money(tag.cents) + '.<br>You have ' + money(state.balance) + '.' : '',
+        quiz: ask ? { question: 'How much more money do you need?', answer: need,
+          hint: money(tag.cents) + ' minus ' + money(state.balance) + '.',
+          right: 'Yes! You need ' + money(need) + ' more.',
+          reveal: 'You need ' + money(need) + ' more. ' + money(tag.cents) + ' − ' + money(state.balance) + ' = ' + money(need) + '.' } : null });
     }
 
     state.balance -= tag.cents;
     addHistory('item', tag.cents);
     save(); render();
+    if (state.askMath) {
+      return show({ kind: 'paid', title: 'Done', amount: money(tag.cents),
+        msg: 'You had ' + money(had) + ' and you just spent ' + money(tag.cents) + '.',
+        quiz: { question: 'How much money do you have left?', answer: state.balance,
+          hint: money(had) + ' minus ' + money(tag.cents) + '.',
+          right: 'Yes! You have ' + money(state.balance) + ' left.',
+          reveal: 'You have ' + money(state.balance) + ' left. ' + money(had) + ' − ' + money(tag.cents) + ' = ' + money(state.balance) + '.' } });
+    }
     show({ kind: 'paid', title: 'Done', amount: money(tag.cents),
       msg: 'You spent ' + money(tag.cents) + '.', detail: 'You have ' + money(state.balance) + ' left.' });
   }
@@ -243,15 +295,59 @@
     $('oOk').style.background = s.ok;
     $('oSay').style.display = state.showSpeak && 'speechSynthesis' in window ? '' : 'none';
     spoken = [r.kind === 'overdraft' ? '' : r.title, r.msg, (r.detail || '').replace(/<br>/g, ' ')].filter(Boolean).join(' ');
+    quiz = r.quiz || null;
+    $('quiz').hidden = !quiz;
+    if (quiz) { $('qLabel').textContent = quiz.question; $('quiz').style.setProperty('--qc', s.ok); }
+    $('overlay').classList.toggle('quiz', !!quiz);
+    $('qIn').value = ''; $('qIn').disabled = false;
+    $('qFb').textContent = ''; $('qFb').className = 'quiz-fb';
     // Restart the pop/draw animations each time.
     const b = $('oBadge'); b.style.animation = 'none'; b.offsetHeight; b.style.animation = '';
     $('overlay').classList.add('show');
+    $('overlay').scrollTop = 0;
     $('oOk').focus();
   }
   $('oOk').onclick = () => { $('overlay').classList.remove('show'); try { speechSynthesis.cancel(); } catch (e) {} };
   $('oSay').onclick = () => {
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(spoken); u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {}
+    let text = spoken;
+    if (quiz) text += ' ' + quiz.question + ' ' + $('qFb').textContent;
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {}
   };
+
+  // ---------- Money questions (how much more / now / left) ----------
+  let quiz = null;
+  function parseMoney(text) {
+    const t = String(text).replace(/[$\s,]/g, '');
+    if (!/^\d+(\.\d{1,2})?$/.test(t) && !/^\.\d{1,2}$/.test(t)) return null;
+    return Math.round(parseFloat(t) * 100);
+  }
+  $('quiz').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!quiz || quiz.done) return;
+    const fb = $('qFb');
+    const guess = parseMoney($('qIn').value);
+    if (guess === null) {
+      fb.className = 'quiz-fb wrong'; fb.textContent = 'Type a number, like 2.';
+      return;
+    }
+    if (guess === quiz.answer) {
+      quiz.done = true;
+      $('qIn').disabled = true;
+      fb.className = 'quiz-fb right';
+      fb.textContent = quiz.right;
+      return;
+    }
+    quiz.tries = (quiz.tries || 0) + 1;
+    fb.className = 'quiz-fb wrong';
+    if (quiz.tries === 1) fb.textContent = 'Not quite. Try again!';
+    else if (quiz.tries === 2) fb.textContent = 'Hint: ' + quiz.hint;
+    else {
+      quiz.done = true;
+      $('qIn').disabled = true;
+      fb.textContent = quiz.reveal;
+    }
+    if (!quiz.done) { $('qIn').select(); }
+  });
 
   // ---------- Main screen ----------
   function render() {
@@ -286,6 +382,8 @@
     $('sBalance').value = (state.balance / 100).toFixed(2);
     $('sDetail').checked = state.showDetail;
     $('sSpeak').checked = state.showSpeak;
+    $('sAsk').checked = state.askNeed;
+    $('sMath').checked = state.askMath;
     $('sheet').classList.add('show');
   }
 
@@ -299,6 +397,8 @@
   $('sClear').onclick = () => { if (confirm('Clear the recent list?')) { state.history = []; save(); render(); } };
   $('sDetail').onchange = e => { state.showDetail = e.target.checked; save(); };
   $('sSpeak').onchange = e => { state.showSpeak = e.target.checked; save(); };
+  $('sAsk').onchange = e => { state.askNeed = e.target.checked; save(); };
+  $('sMath').onchange = e => { state.askMath = e.target.checked; save(); };
 
   // ---------- A tag opened this page ----------
   render();
