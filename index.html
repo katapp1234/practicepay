@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PracticePay</title>
+<meta name="apple-mobile-web-app-title" content="PracticePay">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #000; --text: #fff; --muted: #9a9aa0; --panel: #1c1c1e; --line: #2c2c2e;
+    --blue: #0a84ff; --green: #30d158; --orange: #ff9f0a; --grey: #636366;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
+  .wrap { max-width: 480px; margin: 0 auto; padding-bottom: 32px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; }
+  .brand img { width: 36px; height: 36px; border-radius: 9px; }
+  .lock { position: relative; width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: var(--panel); color: var(--muted); font-size: 18px; user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none; touch-action: none; }
+  .lock svg.ring { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .lock circle { fill: none; stroke: var(--green); stroke-width: 3; stroke-dasharray: 126; stroke-dashoffset: 126; }
+  .lock.holding circle { transition: stroke-dashoffset 2s linear; stroke-dashoffset: 0; }
+
+  .card { position: relative; border-radius: 22px; padding: 22px; aspect-ratio: 1.586; margin-top: 8px;
+    background: linear-gradient(135deg, #2f7d32 0%, #6fb83f 45%, #c4dd5c 100%);
+    box-shadow: 0 12px 40px rgba(111,184,63,.25); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+  .card::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%;
+    background: rgba(255,255,255,.12); }
+  .card .top { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 18px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .chip { width: 42px; height: 32px; border-radius: 7px; background: linear-gradient(135deg,#f6e27a,#c9a43a); }
+  .card .label { font-size: 15px; opacity: .9; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .card .balance { font-size: clamp(40px, 13vw, 58px); font-weight: 800; letter-spacing: -1px; text-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .card .balance.low { color: #fff3d6; }
+
+  .hint { display: flex; align-items: center; gap: 14px; background: var(--panel); border-radius: 18px; padding: 18px; margin-top: 18px; font-size: 19px; font-weight: 600; }
+  .hint .wave { font-size: 34px; }
+
+  h2 { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 26px 4px 8px; }
+  .list { background: var(--panel); border-radius: 18px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--line); font-size: 18px; }
+  .row:first-child { border-top: none; }
+  .row .ico { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; flex: none; }
+  .row .what { flex: 1; font-weight: 600; }
+  .row .when { display: block; font-size: 13px; color: var(--muted); font-weight: 400; }
+  .row .amt { font-weight: 700; }
+  .plus { color: var(--green); } .empty { padding: 18px; color: var(--muted); font-size: 16px; }
+
+  /* Result screen */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px 24px calc(24px + env(safe-area-inset-bottom)); background: rgba(0,0,0,.97); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+  .overlay.show { display: flex; animation: fade .2s ease-out; }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  .badge { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; font-size: 76px; animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.4) } to { transform: scale(1) } }
+  .badge svg path { stroke: #fff; stroke-width: 9; fill: none; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 80; stroke-dashoffset: 80; animation: draw .45s .2s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0 } }
+  .o-title { font-size: 34px; font-weight: 800; margin: 26px 0 6px; }
+  .o-amount { font-size: 54px; font-weight: 800; letter-spacing: -1px; }
+  .o-msg { font-size: 26px; font-weight: 700; line-height: 1.3; max-width: 420px; margin-top: 8px; }
+  .o-detail { font-size: 21px; color: #d1d1d6; margin-top: 14px; line-height: 1.4; }
+  .o-buttons { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 380px; margin-top: 34px; }
+  .big { font: inherit; font-size: 24px; font-weight: 800; border: none; border-radius: 18px; padding: 20px; color: #fff; background: var(--blue); }
+  .big.ghost { background: var(--panel); font-size: 20px; padding: 16px; }
+
+  /* Helper settings */
+  .sheet { position: fixed; inset: 0; z-index: 20; display: none; overflow-y: auto; background: #000;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+  .sheet.show { display: block; }
+  .sheet .inner { max-width: 480px; margin: 0 auto; }
+  .sheet header { padding-top: 0; }
+  .group { background: var(--panel); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  .group h3 { margin: 0 0 12px; font-size: 17px; }
+  .group p { margin: 0 0 12px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+  .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  input[type=number] { font: inherit; font-size: 18px; flex: 1; min-width: 120px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #000; color: #fff; }
+  .btn { font: inherit; font-size: 16px; font-weight: 600; border: none; border-radius: 12px; padding: 12px 16px; background: var(--blue); color: #fff; }
+  .btn.grey { background: #3a3a3c; } .btn.red { background: #ff453a; }
+  .seg { display: flex; background: #000; border-radius: 12px; padding: 3px; flex: 1; min-width: 200px; }
+  .seg button { flex: 1; font: inherit; font-size: 15px; font-weight: 600; border: none; border-radius: 10px; padding: 10px; background: transparent; color: var(--muted); }
+  .seg button.on { background: #3a3a3c; color: #fff; }
+  .toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; font-size: 16px; }
+  .toggle input { width: 24px; height: 24px; accent-color: var(--green); }
+  .out { margin-top: 12px; padding: 12px; border-radius: 12px; background: #000; font-family: ui-monospace, Menlo, monospace; font-size: 13px; word-break: break-all; color: #d1d1d6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><img src="icon.svg" alt="">PracticePay</div>
+    <button class="lock" id="lock" aria-label="Helper settings: press and hold">
+      <svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"/></svg>🔒
+    </button>
+  </header>
+
+  <div class="card" role="group" aria-label="My money card">
+    <div class="top"><span>My Money Card</span><span class="chip"></span></div>
+    <div>
+      <div class="label">I have</div>
+      <div class="balance" id="balance" aria-live="polite">$0</div>
+    </div>
+  </div>
+
+  <div class="hint"><span class="wave">📲</span><span>Hold the top of the phone near a tag</span></div>
+
+  <h2>Recent</h2>
+  <div class="list" id="history"></div>
+</div>
+
+<!-- Result screen -->
+<div class="overlay" id="overlay" role="alertdialog" aria-modal="true" aria-labelledby="oTitle">
+  <div class="badge" id="oBadge"></div>
+  <div class="o-title" id="oTitle"></div>
+  <div class="o-amount" id="oAmount"></div>
+  <div class="o-msg" id="oMsg"></div>
+  <div class="o-detail" id="oDetail"></div>
+  <div class="o-buttons">
+    <button class="big ghost" id="oSay">🔊 Hear it</button>
+    <button class="big" id="oOk">OK</button>
+  </div>
+</div>
+
+<!-- Helper settings -->
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Helper settings">
+  <div class="inner">
+    <header><div class="brand">Helper settings</div><button class="btn" id="sDone">Done</button></header>
+
+    <div class="group">
+      <h3>Money on the card</h3>
+      <div class="line">
+        <input type="number" id="sBalance" inputmode="decimal" min="0" step="0.01" placeholder="Amount in dollars">
+        <button class="btn" id="sSetBal">Set</button>
+      </div>
+      <div class="line" style="margin-top:10px">
+        <button class="btn grey" id="sZero">Reset to $0</button>
+        <button class="btn grey" id="sClear">Clear recent list</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3>Numbers on the tags mean…</h3>
+      <p>Example: with “Dollars”, Item|500 costs $500. With “Cents”, Item|500 costs $5.</p>
+      <div class="seg" id="sUnits"><button data-v="dollars">Dollars</button><button data-v="cents">Cents</button></div>
+    </div>
+
+    <div class="group">
+      <h3>Screens</h3>
+      <label class="toggle">On “not enough money”, also show the price and what they have <input type="checkbox" id="sDetail"></label>
+      <label class="toggle">Show the “🔊 Hear it” button <input type="checkbox" id="sSpeak"></label>
+    </div>
+
+    <div class="group">
+      <h3>Make a tag link</h3>
+      <p>Write this link onto a tag as a <b>URL / Link</b> record (for example with the free NFC Tools app).</p>
+      <div class="line">
+        <div class="seg" id="sType"><button data-v="Item">Item (pay)</button><button data-v="Paycheck">Paycheck (get paid)</button></div>
+      </div>
+      <div class="line" style="margin-top:10px">
+        <input type="number" id="sAmt" inputmode="decimal" min="0" step="0.01" value="5" aria-label="Tag amount">
+        <button class="btn grey" id="sCopy">Copy link</button>
+      </div>
+      <div class="out" id="sOut"></div>
+      <div class="line" style="margin-top:10px">
+        <button class="btn grey" id="sTest">Try this tag now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEY = 'practicepay.v1';
+  const SAME_TAG_WINDOW_MS = 4000; // ignore the same tag read twice this quickly
+  const $ = id => document.getElementById(id);
+
+  const defaults = { balance: 0, history: [], units: 'dollars', showDetail: true, showSpeak: true, last: null };
+  let state = load();
+
+  function load() {
+    try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY) || '{}')); }
+    catch (e) { return Object.assign({}, defaults); }
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  // Money is stored as whole cents so the maths is always exact.
+  function money(cents) {
+    const whole = cents % 100 === 0;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD',
+      minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(cents / 100);
+  }
+
+  // Accepts "Item|500", "Paycheck|1000", case-insensitive; ":" also works as the separator.
+  function parseTag(raw) {
+    const m = String(raw).trim().match(/^(item|paycheck)\s*[|:]\s*\$?\s*(\d+(?:\.\d{1,2})?)$/i);
+    if (!m) return null;
+    const n = parseFloat(m[2]);
+    const cents = state.units === 'cents' ? Math.round(n) : Math.round(n * 100);
+    return { kind: m[1].toLowerCase(), cents };
+  }
+
+  function handleTag(raw) {
+    const now = Date.now();
+    if (state.last && state.last.raw === raw && now - state.last.ts < SAME_TAG_WINDOW_MS) return;
+    state.last = { raw, ts: now };
+
+    const tag = parseTag(raw);
+    if (!tag || tag.cents <= 0) {
+      save();
+      return show({ kind: 'unknown', title: 'Hmm…', msg: "I don't know this tag. Please ask for help." });
+    }
+
+    if (tag.kind === 'paycheck') {
+      state.balance += tag.cents;
+      addHistory('paycheck', tag.cents);
+      save(); render();
+      return show({ kind: 'paycheck', title: 'You got paid!', amount: '+' + money(tag.cents),
+        msg: 'Now you have ' + money(state.balance) + '.' });
+    }
+
+    if (tag.cents > state.balance) {
+      save();
+      return show({ kind: 'overdraft', title: 'Uh oh',
+        msg: "Uh oh you don't have enough money, please put the item back.",
+        detail: state.showDetail ? 'It costs ' + money(tag.cents) + '.<br>You have ' + money(state.balance) + '.' : '' });
+    }
+
+    state.balance -= tag.cents;
+    addHistory('item', tag.cents);
+    save(); render();
+    show({ kind: 'paid', title: 'Done', amount: money(tag.cents),
+      msg: 'You paid ' + money(tag.cents) + '.', detail: 'You have ' + money(state.balance) + ' left.' });
+  }
+
+  function addHistory(kind, cents) {
+    state.history.unshift({ kind, cents, ts: Date.now() });
+    state.history = state.history.slice(0, 20);
+  }
+
+  // ---------- Result screen ----------
+  const CHECK = '<svg viewBox="0 0 100 100" width="90" height="90"><path d="M26 52 L44 69 L75 34"/></svg>';
+  const STYLES = {
+    paid:      { bg: 'var(--blue)',   icon: CHECK, ok: 'var(--blue)' },
+    paycheck:  { bg: 'var(--green)',  icon: '💵',  ok: 'var(--green)' },
+    overdraft: { bg: 'var(--orange)', icon: '✋',  ok: 'var(--orange)' },
+    unknown:   { bg: 'var(--grey)',   icon: '❓',  ok: 'var(--blue)' }
+  };
+  let spoken = '';
+
+  function show(r) {
+    const s = STYLES[r.kind];
+    $('oBadge').style.background = s.bg;
+    $('oBadge').innerHTML = s.icon;
+    $('oTitle').textContent = r.kind === 'overdraft' ? '' : r.title;
+    $('oTitle').style.display = r.kind === 'overdraft' ? 'none' : '';
+    $('oAmount').textContent = r.amount || '';
+    $('oMsg').textContent = r.msg || '';
+    $('oDetail').innerHTML = r.detail || '';
+    $('oOk').style.background = s.ok;
+    $('oSay').style.display = state.showSpeak && 'speechSynthesis' in window ? '' : 'none';
+    spoken = [r.kind === 'overdraft' ? '' : r.title, r.msg, (r.detail || '').replace(/<br>/g, ' ')].filter(Boolean).join(' ');
+    // Restart the pop/draw animations each time.
+    const b = $('oBadge'); b.style.animation = 'none'; b.offsetHeight; b.style.animation = '';
+    $('overlay').classList.add('show');
+    $('oOk').focus();
+  }
+  $('oOk').onclick = () => { $('overlay').classList.remove('show'); try { speechSynthesis.cancel(); } catch (e) {} };
+  $('oSay').onclick = () => {
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(spoken); u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {}
+  };
+
+  // ---------- Main screen ----------
+  function render() {
+    $('balance').textContent = money(state.balance);
+    $('balance').classList.toggle('low', state.balance === 0);
+    const h = $('history');
+    if (!state.history.length) { h.innerHTML = '<div class="empty">Nothing yet. Tap a paycheck to get money!</div>'; return; }
+    h.innerHTML = state.history.slice(0, 8).map(x => {
+      const pay = x.kind === 'paycheck';
+      const when = new Date(x.ts).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+      return '<div class="row"><span class="ico" style="background:' + (pay ? 'rgba(48,209,88,.18)' : 'rgba(10,132,255,.18)') + '">' +
+        (pay ? '💵' : '🛒') + '</span><span class="what">' + (pay ? 'Paycheck' : 'Item') + '<span class="when">' + when + '</span></span>' +
+        '<span class="amt ' + (pay ? 'plus' : '') + '">' + (pay ? '+' : '−') + money(x.cents) + '</span></div>';
+    }).join('');
+  }
+
+  // Other Safari tabs (each tag tap may open a new one) keep the same balance.
+  window.addEventListener('storage', e => { if (e.key === KEY) { state = load(); render(); } });
+  window.addEventListener('pageshow', () => { state = load(); render(); });
+
+  // ---------- Helper settings (press and hold the lock for 2 seconds) ----------
+  let holdTimer = null;
+  const lock = $('lock');
+  const startHold = e => { e.preventDefault(); lock.classList.add('holding'); holdTimer = setTimeout(openSheet, 2000); };
+  const endHold = () => { lock.classList.remove('holding'); clearTimeout(holdTimer); };
+  lock.addEventListener('pointerdown', startHold);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => lock.addEventListener(t, endHold));
+  lock.addEventListener('contextmenu', e => e.preventDefault());
+
+  let tagType = 'Item';
+  function openSheet() {
+    endHold();
+    $('sBalance').value = (state.balance / 100).toFixed(2);
+    $('sDetail').checked = state.showDetail;
+    $('sSpeak').checked = state.showSpeak;
+    paintSegs(); updateLink();
+    $('sheet').classList.add('show');
+  }
+  function paintSegs() {
+    document.querySelectorAll('#sUnits button').forEach(b => b.classList.toggle('on', b.dataset.v === state.units));
+    document.querySelectorAll('#sType button').forEach(b => b.classList.toggle('on', b.dataset.v === tagType));
+  }
+  function tagText() { return tagType + '|' + ($('sAmt').value || '0'); }
+  function tagLink() { return location.origin + location.pathname + '?tag=' + encodeURIComponent(tagText()); }
+  function updateLink() { $('sOut').textContent = tagLink(); }
+
+  $('sDone').onclick = () => $('sheet').classList.remove('show');
+  $('sSetBal').onclick = () => {
+    const v = parseFloat($('sBalance').value);
+    if (isNaN(v) || v < 0) return alert('Please type an amount like 20 or 12.50');
+    state.balance = Math.round(v * 100); save(); render(); alert('Balance is now ' + money(state.balance));
+  };
+  $('sZero').onclick = () => { if (confirm('Set the card to $0?')) { state.balance = 0; save(); render(); $('sBalance').value = '0.00'; } };
+  $('sClear').onclick = () => { if (confirm('Clear the recent list?')) { state.history = []; save(); render(); } };
+  $('sUnits').onclick = e => { const v = e.target.dataset.v; if (v) { state.units = v; save(); paintSegs(); } };
+  $('sType').onclick = e => { const v = e.target.dataset.v; if (v) { tagType = v; paintSegs(); updateLink(); } };
+  $('sDetail').onchange = e => { state.showDetail = e.target.checked; save(); };
+  $('sSpeak').onchange = e => { state.showSpeak = e.target.checked; save(); };
+  $('sAmt').oninput = updateLink;
+  $('sCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(tagLink()); $('sCopy').textContent = 'Copied!'; }
+    catch (e) { $('sCopy').textContent = 'Select the link below'; }
+    setTimeout(() => $('sCopy').textContent = 'Copy link', 1500);
+  };
+  $('sTest').onclick = () => { $('sheet').classList.remove('show'); state.last = null; handleTag(tagText()); };
+
+  // ---------- A tag opened this page ----------
+  render();
+  const raw = new URLSearchParams(location.search).get('tag');
+  if (raw !== null) {
+    // Remove the tag from the address so reloading the page can't charge twice.
+    history.replaceState(null, '', location.pathname);
+    handleTag(raw);
+  }
+})();
+</script>
+</body>
+</html>
