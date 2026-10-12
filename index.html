@@ -102,7 +102,8 @@
   .seg button { flex: 1; font: inherit; font-size: 15px; font-weight: 600; border: none; border-radius: 10px; padding: 10px; background: transparent; color: var(--muted); }
   .seg button.on { background: #3a3a3c; color: #fff; }
   .toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; font-size: 16px; }
-  .toggle input { width: 24px; height: 24px; accent-color: var(--green); }
+  .toggle input { width: 24px; height: 24px; accent-color: var(--green); flex: none; }
+  .toggle .sub { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); line-height: 1.35; }
   .out { margin-top: 12px; padding: 12px; border-radius: 12px; background: #000; font-family: ui-monospace, Menlo, monospace; font-size: 13px; word-break: break-all; color: #d1d1d6; }
 </style>
 </head>
@@ -173,9 +174,11 @@
       <h3>Screens</h3>
       <label class="toggle">On “not enough money”, also show the price and what they have <input type="checkbox" id="sDetail"></label>
       <label class="toggle">Show the “🔊 Hear it” button <input type="checkbox" id="sSpeak"></label>
-      <label class="toggle">On “not enough money”, ask “How much more money do you need?” <input type="checkbox" id="sAsk"></label>
-      <label class="toggle">After getting paid or spending, ask how much money they have now <input type="checkbox" id="sMath"></label>
+      <label class="toggle"><span>Savings Mode<span class="sub">On “not enough money”, asks “How much more money do you need?”</span></span> <input type="checkbox" id="sAsk"></label>
+      <label class="toggle"><span>Math Mode<span class="sub">After getting paid or spending, asks how much money they have now</span></span> <input type="checkbox" id="sMath"></label>
     </div>
+
+    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay version 1.5</p>
 
   </div>
 </div>
