@@ -117,16 +117,16 @@
   </header>
 
   <div class="card" role="group" aria-label="My money card">
-    <div class="top"><span>My Money Card</span><span class="chip"></span></div>
+    <div class="top"><span id="tCard">My Money Card</span><span class="chip"></span></div>
     <div>
-      <div class="label">I have</div>
+      <div class="label" id="tHave">I have</div>
       <div class="balance" id="balance" aria-live="polite">$0</div>
     </div>
   </div>
 
-  <div class="hint"><span class="wave">📲</span><span>Hold the top of the phone near a tag</span></div>
+  <div class="hint"><span class="wave">📲</span><span id="tHint">Hold the top of the phone near a tag</span></div>
 
-  <h2>Recent</h2>
+  <h2 id="tRecent">Recent</h2>
   <div class="list" id="history"></div>
 </div>
 
@@ -142,7 +142,7 @@
     <label for="qIn" id="qLabel">How much more money do you need?</label>
     <div class="quiz-row">
       <div class="money-in"><span>$</span><input id="qIn" type="text" inputmode="decimal" autocomplete="off" aria-label="Your answer, in dollars"></div>
-      <button class="big" type="submit">Check</button>
+      <button class="big" type="submit" id="qCheck">Check</button>
     </div>
     <div class="quiz-fb" id="qFb" aria-live="polite"></div>
   </form>
@@ -157,6 +157,12 @@
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Helper settings">
   <div class="inner">
     <header><div class="brand">Helper settings</div><button class="btn" id="sDone">Done</button></header>
+
+    <div class="group">
+      <h3>Language / Idioma</h3>
+      <p>Changes what the player sees and hears. Caregiver settings stay in English.</p>
+      <div class="seg" id="sLang"><button data-v="en">English</button><button data-v="es">Español</button></div>
+    </div>
 
     <div class="group">
       <h3>Money on the card</h3>
@@ -184,7 +190,7 @@
       <a class="btn" href="guide.html" style="display: block; text-align: center; text-decoration: none">Open the PracticePay guide</a>
     </div>
 
-    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay version 1.6</p>
+    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay version 1.7</p>
 
   </div>
 </div>
@@ -195,7 +201,7 @@
   const SAME_TAG_WINDOW_MS = 4000; // ignore the same tag read twice this quickly
   const $ = id => document.getElementById(id);
 
-  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, askNeed: false, askMath: false, last: null };
+  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, askNeed: false, askMath: false, lang: 'en', last: null };
   let state = load();
 
   function load() {
@@ -203,6 +209,60 @@
     catch (e) { return Object.assign({}, defaults); }
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  // ---------- Player-facing text (English / Spanish) ----------
+  const TEXT = {
+    en: {
+      card: 'My Money Card', have: 'I have', hint: 'Hold the top of the phone near a tag', recent: 'Recent',
+      empty: 'Nothing yet. Tap a paycheck to get money!', paycheck: 'Paycheck', item: 'Item',
+      hear: '🔊 Hear it', ok: 'OK', check: 'Check', answer: 'Your answer, in dollars',
+      unknownTitle: 'Hmm…', unknownMsg: "I don't know this tag. Please ask for help.",
+      paidTitle: 'You got paid!', nowHave: t => 'Now you have ' + t + '.',
+      hadEarned: (h, e) => 'You had ' + h + ' and just earned ' + e + ' more.',
+      qNow: 'How much money do you have now?', yesNow: t => 'Yes! You have ' + t + ' now.',
+      revealNow: (t, a, b) => 'You have ' + t + ' now. ' + a + ' + ' + b + ' = ' + t + '.',
+      overMsg: "Uh oh you don't have enough money, please put the item back.",
+      costs: (p, h) => 'It costs ' + p + '.<br>You have ' + h + '.',
+      qNeed: 'How much more money do you need?', yesNeed: n => 'Yes! You need ' + n + ' more.',
+      revealNeed: (n, a, b) => 'You need ' + n + ' more. ' + a + ' − ' + b + ' = ' + n + '.',
+      doneTitle: 'Done', spent: s => 'You spent ' + s + '.', left: (t) => 'You have ' + t + ' left.',
+      hadSpent: (h, s) => 'You had ' + h + ' and you just spent ' + s + '.',
+      qLeft: 'How much money do you have left?', yesLeft: t => 'Yes! You have ' + t + ' left.',
+      revealLeft: (t, c, a, b) => 'You have ' + t + ' left. ' + a + ' − ' + b + ' = ' + t + '.',
+      plus: (a, b) => a + ' plus ' + b + '.', minus: (a, b) => a + ' minus ' + b + '.',
+      typeNum: 'Type a number, like 2.', tryAgain: 'Not quite. Try again!', hintWord: 'Hint: ',
+      locale: 'en-US'
+    },
+    es: {
+      card: 'Mi tarjeta de dinero', have: 'Tengo', hint: 'Acerca la parte de arriba del teléfono a una etiqueta', recent: 'Recientes',
+      empty: 'Todavía no hay nada. ¡Toca un cheque de pago para recibir dinero!', paycheck: 'Cheque de pago', item: 'Artículo',
+      hear: '🔊 Escuchar', ok: 'OK', check: 'Revisar', answer: 'Tu respuesta, en dólares',
+      unknownTitle: 'Mmm…', unknownMsg: 'No conozco esta etiqueta. Por favor, pide ayuda.',
+      paidTitle: '¡Te pagaron!', nowHave: t => 'Ahora tienes ' + t + '.',
+      hadEarned: (h, e) => 'Tenías ' + h + ' y acabas de ganar ' + e + ' más.',
+      qNow: '¿Cuánto dinero tienes ahora?', yesNow: t => '¡Sí! Ahora tienes ' + t + '.',
+      revealNow: (t, a, b) => 'Ahora tienes ' + t + '. ' + a + ' + ' + b + ' = ' + t + '.',
+      overMsg: '¡Ay, no! No tienes suficiente dinero. Por favor, devuelve el artículo.',
+      costs: (p, h) => 'Cuesta ' + p + '.<br>Tienes ' + h + '.',
+      qNeed: '¿Cuánto dinero más necesitas?', yesNeed: n => '¡Sí! Necesitas ' + n + ' más.',
+      revealNeed: (n, a, b) => 'Necesitas ' + n + ' más. ' + a + ' − ' + b + ' = ' + n + '.',
+      doneTitle: '¡Listo!', spent: s => 'Gastaste ' + s + '.', left: (t, c) => (c === 100 ? 'Te queda ' : 'Te quedan ') + t + '.',
+      hadSpent: (h, s) => 'Tenías ' + h + ' y acabas de gastar ' + s + '.',
+      qLeft: '¿Cuánto dinero te queda?', yesLeft: (t, c) => '¡Sí! ' + (c === 100 ? 'Te queda ' : 'Te quedan ') + t + '.',
+      revealLeft: (t, c, a, b) => (c === 100 ? 'Te queda ' : 'Te quedan ') + t + '. ' + a + ' − ' + b + ' = ' + t + '.',
+      plus: (a, b) => a + ' más ' + b + '.', minus: (a, b) => a + ' menos ' + b + '.',
+      typeNum: 'Escribe un número, como 2.', tryAgain: 'Casi. ¡Inténtalo otra vez!', hintWord: 'Pista: ',
+      locale: 'es-US'
+    }
+  };
+  const L = () => TEXT[state.lang] || TEXT.en;
+  function applyLang() {
+    const t = L();
+    document.documentElement.lang = state.lang === 'es' ? 'es' : 'en';
+    $('tCard').textContent = t.card; $('tHave').textContent = t.have; $('tHint').textContent = t.hint;
+    $('tRecent').textContent = t.recent; $('oSay').textContent = t.hear; $('oOk').textContent = t.ok;
+    $('qCheck').textContent = t.check; $('qIn').setAttribute('aria-label', t.answer);
+  }
 
   // Money is stored as whole cents so the maths is always exact.
   function money(cents) {
@@ -226,7 +286,7 @@
     const tag = parseTag(raw);
     if (!tag || tag.cents <= 0) {
       save();
-      return show({ kind: 'unknown', title: 'Hmm…', msg: "I don't know this tag. Please ask for help." });
+      return show({ kind: 'unknown', title: L().unknownTitle, msg: L().unknownMsg });
     }
 
     const had = state.balance;
@@ -237,15 +297,14 @@
       save(); render();
       if (state.askMath) {
         // Hide the new total: working it out is the question.
-        return show({ kind: 'paycheck', title: 'You got paid!', amount: '+' + money(tag.cents),
-          msg: 'You had ' + money(had) + ' and just earned ' + money(tag.cents) + ' more.',
-          quiz: { question: 'How much money do you have now?', answer: state.balance,
-            hint: money(had) + ' plus ' + money(tag.cents) + '.',
-            right: 'Yes! You have ' + money(state.balance) + ' now.',
-            reveal: 'You have ' + money(state.balance) + ' now. ' + money(had) + ' + ' + money(tag.cents) + ' = ' + money(state.balance) + '.' } });
+        const t = L(), now = money(state.balance), h = money(had), e = money(tag.cents);
+        return show({ kind: 'paycheck', title: t.paidTitle, amount: '+' + e,
+          msg: t.hadEarned(h, e),
+          quiz: { question: t.qNow, answer: state.balance, hint: t.plus(h, e),
+            right: t.yesNow(now), reveal: t.revealNow(now, h, e) } });
       }
-      return show({ kind: 'paycheck', title: 'You got paid!', amount: '+' + money(tag.cents),
-        msg: 'Now you have ' + money(state.balance) + '.' });
+      return show({ kind: 'paycheck', title: L().paidTitle, amount: '+' + money(tag.cents),
+        msg: L().nowHave(money(state.balance)) });
     }
 
     if (tag.cents > state.balance) {
@@ -253,28 +312,26 @@
       // The question needs the price and balance on screen, so it always shows them.
       const ask = state.askNeed;
       const need = tag.cents - state.balance;
-      return show({ kind: 'overdraft', title: 'Uh oh',
-        msg: "Uh oh you don't have enough money, please put the item back.",
-        detail: (state.showDetail || ask) ? 'It costs ' + money(tag.cents) + '.<br>You have ' + money(state.balance) + '.' : '',
-        quiz: ask ? { question: 'How much more money do you need?', answer: need,
-          hint: money(tag.cents) + ' minus ' + money(state.balance) + '.',
-          right: 'Yes! You need ' + money(need) + ' more.',
-          reveal: 'You need ' + money(need) + ' more. ' + money(tag.cents) + ' − ' + money(state.balance) + ' = ' + money(need) + '.' } : null });
+      const t = L(), p = money(tag.cents), hv = money(state.balance), nd = money(need);
+      return show({ kind: 'overdraft', title: '',
+        msg: t.overMsg,
+        detail: (state.showDetail || ask) ? t.costs(p, hv) : '',
+        quiz: ask ? { question: t.qNeed, answer: need, hint: t.minus(p, hv),
+          right: t.yesNeed(nd), reveal: t.revealNeed(nd, p, hv) } : null });
     }
 
     state.balance -= tag.cents;
     addHistory('item', tag.cents);
     save(); render();
     if (state.askMath) {
-      return show({ kind: 'paid', title: 'Done', amount: money(tag.cents),
-        msg: 'You had ' + money(had) + ' and you just spent ' + money(tag.cents) + '.',
-        quiz: { question: 'How much money do you have left?', answer: state.balance,
-          hint: money(had) + ' minus ' + money(tag.cents) + '.',
-          right: 'Yes! You have ' + money(state.balance) + ' left.',
-          reveal: 'You have ' + money(state.balance) + ' left. ' + money(had) + ' − ' + money(tag.cents) + ' = ' + money(state.balance) + '.' } });
+      const t = L(), lf = money(state.balance), h = money(had), sp = money(tag.cents);
+      return show({ kind: 'paid', title: t.doneTitle, amount: sp,
+        msg: t.hadSpent(h, sp),
+        quiz: { question: t.qLeft, answer: state.balance, hint: t.minus(h, sp),
+          right: t.yesLeft(lf, state.balance), reveal: t.revealLeft(lf, state.balance, h, sp) } });
     }
-    show({ kind: 'paid', title: 'Done', amount: money(tag.cents),
-      msg: 'You spent ' + money(tag.cents) + '.', detail: 'You have ' + money(state.balance) + ' left.' });
+    show({ kind: 'paid', title: L().doneTitle, amount: money(tag.cents),
+      msg: L().spent(money(tag.cents)), detail: L().left(money(state.balance), state.balance) });
   }
 
   function addHistory(kind, cents) {
@@ -320,7 +377,7 @@
   $('oSay').onclick = () => {
     let text = spoken;
     if (quiz) text += ' ' + quiz.question + ' ' + $('qFb').textContent;
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {}
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = L().locale; u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {}
   };
 
   // ---------- Money questions (how much more / now / left) ----------
@@ -336,7 +393,7 @@
     const fb = $('qFb');
     const guess = parseMoney($('qIn').value);
     if (guess === null) {
-      fb.className = 'quiz-fb wrong'; fb.textContent = 'Type a number, like 2.';
+      fb.className = 'quiz-fb wrong'; fb.textContent = L().typeNum;
       return;
     }
     if (guess === quiz.answer) {
@@ -348,8 +405,8 @@
     }
     quiz.tries = (quiz.tries || 0) + 1;
     fb.className = 'quiz-fb wrong';
-    if (quiz.tries === 1) fb.textContent = 'Not quite. Try again!';
-    else if (quiz.tries === 2) fb.textContent = 'Hint: ' + quiz.hint;
+    if (quiz.tries === 1) fb.textContent = L().tryAgain;
+    else if (quiz.tries === 2) fb.textContent = L().hintWord + quiz.hint;
     else {
       quiz.done = true;
       $('qIn').disabled = true;
@@ -360,15 +417,16 @@
 
   // ---------- Main screen ----------
   function render() {
+    applyLang();
     $('balance').textContent = money(state.balance);
     $('balance').classList.toggle('low', state.balance === 0);
     const h = $('history');
-    if (!state.history.length) { h.innerHTML = '<div class="empty">Nothing yet. Tap a paycheck to get money!</div>'; return; }
+    if (!state.history.length) { h.innerHTML = '<div class="empty">' + L().empty + '</div>'; return; }
     h.innerHTML = state.history.slice(0, 8).map(x => {
       const pay = x.kind === 'paycheck';
-      const when = new Date(x.ts).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+      const when = new Date(x.ts).toLocaleString(L().locale, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
       return '<div class="row"><span class="ico" style="background:' + (pay ? 'rgba(48,209,88,.18)' : 'rgba(10,132,255,.18)') + '">' +
-        (pay ? '💵' : '🛒') + '</span><span class="what">' + (pay ? 'Paycheck' : 'Item') + '<span class="when">' + when + '</span></span>' +
+        (pay ? '💵' : '🛒') + '</span><span class="what">' + (pay ? L().paycheck : L().item) + '<span class="when">' + when + '</span></span>' +
         '<span class="amt ' + (pay ? 'plus' : '') + '">' + (pay ? '+' : '−') + money(x.cents) + '</span></div>';
     }).join('');
   }
@@ -393,6 +451,7 @@
     $('sSpeak').checked = state.showSpeak;
     $('sAsk').checked = state.askNeed;
     $('sMath').checked = state.askMath;
+    paintLang();
     $('sheet').classList.add('show');
   }
 
@@ -408,6 +467,8 @@
   $('sSpeak').onchange = e => { state.showSpeak = e.target.checked; save(); };
   $('sAsk').onchange = e => { state.askNeed = e.target.checked; save(); };
   $('sMath').onchange = e => { state.askMath = e.target.checked; save(); };
+  function paintLang() { document.querySelectorAll('#sLang button').forEach(b => b.classList.toggle('on', b.dataset.v === (state.lang || 'en'))); }
+  $('sLang').onclick = e => { const v = e.target.dataset.v; if (v) { state.lang = v; save(); paintLang(); applyLang(); render(); } };
 
   // ---------- A tag opened this page ----------
   render();
