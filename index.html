@@ -72,6 +72,14 @@
   .quiz-row .big { padding: 14px 20px; font-size: 22px; background: var(--qc, var(--orange)); }
   .quiz-fb { min-height: 1.4em; margin-top: 14px; font-size: 21px; font-weight: 700; line-height: 1.35; }
   .quiz-fb.right { color: var(--green); } .quiz-fb.wrong { color: #ffd60a; }
+
+  /* "Do you have enough?" Yes / No */
+  .yn { width: 100%; max-width: 380px; margin-top: 26px; }
+  .yn-row { display: flex; gap: 12px; }
+  .yn-row[hidden] { display: none; }
+  .yn-row .big { flex: 1; font-size: 28px; padding: 22px 10px; }
+  .yn-row .yes { background: var(--green); color: #000; }
+  .yn-row .no { background: var(--orange); color: #000; }
   .overlay.show { display: flex; animation: fade .2s ease-out; }
   @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
   .badge { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; font-size: 76px; animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
@@ -148,6 +156,10 @@
     </div>
     <div class="quiz-fb" id="qFb" aria-live="polite"></div>
   </form>
+  <div class="yn" id="yn" hidden>
+    <div class="yn-row" id="ynRow"><button class="big yes" id="ynYes">👍 Yes</button><button class="big no" id="ynNo">✋ No</button></div>
+    <div class="quiz-fb" id="ynFb" aria-live="polite"></div>
+  </div>
   <div class="o-buttons">
     <button class="big ghost" id="oSay">🔊 Hear it</button>
     <button class="big" id="oOk">OK</button>
@@ -182,6 +194,12 @@
       <h3>Screens</h3>
       <label class="toggle">On “not enough money”, also show the price and what they have <input type="checkbox" id="sDetail"></label>
       <label class="toggle">Show the “🔊 Hear it” button <input type="checkbox" id="sSpeak"></label>
+    </div>
+
+    <div class="group">
+      <h3>Practice modes</h3>
+      <p>Listed from easiest to hardest. Turn on any mix.</p>
+      <label class="toggle"><span>Enough Mode<span class="sub">Before buying, asks “Do you have enough?” with Yes and No buttons</span></span> <input type="checkbox" id="sEnough"></label>
       <label class="toggle"><span>Savings Mode<span class="sub">On “not enough money”, asks “How much more money do you need?”</span></span> <input type="checkbox" id="sAsk"></label>
       <label class="toggle"><span>Math Mode<span class="sub">After getting paid or spending, asks how much money they have now</span></span> <input type="checkbox" id="sMath"></label>
     </div>
@@ -192,7 +210,7 @@
       <a class="btn" href="guide.html" style="display: block; text-align: center; text-decoration: none">Open the PracticePay guide</a>
     </div>
 
-    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay Beta · version 0.8.1</p>
+    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay Beta · version 0.9</p>
 
   </div>
 </div>
@@ -203,7 +221,7 @@
   const SAME_TAG_WINDOW_MS = 4000; // ignore the same tag read twice this quickly
   const $ = id => document.getElementById(id);
 
-  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, askNeed: false, askMath: false, lang: 'en', last: null };
+  const defaults = { balance: 0, history: [], showDetail: true, showSpeak: true, askEnough: false, askNeed: false, askMath: false, lang: 'en', last: null };
   let state = load();
 
   function load() {
@@ -233,6 +251,11 @@
       revealLeft: (t, c, a, b) => 'You have ' + t + ' left. ' + a + ' − ' + b + ' = ' + t + '.',
       plus: (a, b) => a + ' plus ' + b + '.', minus: (a, b) => a + ' minus ' + b + '.',
       typeNum: 'Type a number, like 2.', tryAgain: 'Not quite. Try again!', hintWord: 'Hint: ',
+      qEnough: 'Do you have enough?', yes: '👍 Yes', no: '✋ No', next: 'Next',
+      costHave: (p, h) => 'It costs ' + p + '. You have ' + h + '.',
+      yesEnough: 'Yes! You have enough.', noEnough: "That's right. You don't have enough.",
+      wrongYes: (p, h) => 'Look again: ' + p + ' is more than ' + h + '. You don\'t have enough.',
+      wrongNo: (p, h, same) => 'Look again: you do have enough! ' + p + (same ? ' is the same as ' : ' is less than ') + h + '.',
       locale: 'en-US'
     },
     es: {
@@ -254,6 +277,11 @@
       revealLeft: (t, c, a, b) => (c === 100 ? 'Te queda ' : 'Te quedan ') + t + '. ' + a + ' − ' + b + ' = ' + t + '.',
       plus: (a, b) => a + ' más ' + b + '.', minus: (a, b) => a + ' menos ' + b + '.',
       typeNum: 'Escribe un número, como 2.', tryAgain: 'Casi. ¡Inténtalo otra vez!', hintWord: 'Pista: ',
+      qEnough: '¿Tienes suficiente?', yes: '👍 Sí', no: '✋ No', next: 'Siguiente',
+      costHave: (p, h) => 'Cuesta ' + p + '. Tienes ' + h + '.',
+      yesEnough: '¡Sí! Tienes suficiente.', noEnough: '¡Correcto! No tienes suficiente.',
+      wrongYes: (p, h) => 'Mira otra vez: ' + p + ' es más que ' + h + '. No tienes suficiente.',
+      wrongNo: (p, h, same) => '¡Mira otra vez: sí tienes suficiente! ' + p + (same ? ' es igual a ' : ' es menos que ') + h + '.',
       locale: 'es-US'
     }
   };
@@ -264,6 +292,7 @@
     $('tCard').textContent = t.card; $('tHave').textContent = t.have; $('tHint').textContent = t.hint;
     $('tRecent').textContent = t.recent; $('oSay').textContent = t.hear; $('oOk').textContent = t.ok;
     $('qCheck').textContent = t.check; $('qIn').setAttribute('aria-label', t.answer);
+    $('ynYes').textContent = t.yes; $('ynNo').textContent = t.no;
   }
 
   // Money is stored as whole cents so the maths is always exact.
@@ -309,6 +338,32 @@
         msg: L().nowHave(money(state.balance)) });
     }
 
+    if (state.askEnough) { save(); return askEnough(tag); }
+    buyItem(tag);
+  }
+
+  // ---------- Enough Mode: "Do you have enough?" before buying ----------
+  let pending = null;
+  function askEnough(tag) {
+    const t = L(), p = money(tag.cents), hv = money(state.balance);
+    pending = { tag, enough: tag.cents <= state.balance, same: tag.cents === state.balance, p, hv };
+    show({ kind: 'ask', title: t.qEnough, amount: p, detail: t.costHave(p, hv), yn: true });
+  }
+  function answerEnough(saidYes) {
+    if (!pending || pending.answered) return;
+    pending.answered = true;
+    const t = L(), fb = $('ynFb'), right = saidYes === pending.enough;
+    fb.className = 'quiz-fb ' + (right ? 'right' : 'wrong');
+    fb.textContent = right ? (pending.enough ? t.yesEnough : t.noEnough)
+      : (saidYes ? t.wrongYes(pending.p, pending.hv) : t.wrongNo(pending.p, pending.hv, pending.same));
+    $('ynRow').hidden = true;
+    $('oOk').textContent = t.next; $('oOk').hidden = false; $('oOk').focus();
+  }
+  $('ynYes').onclick = () => answerEnough(true);
+  $('ynNo').onclick = () => answerEnough(false);
+
+  function buyItem(tag) {
+    const had = state.balance;
     if (tag.cents > state.balance) {
       save();
       // The question needs the price and balance on screen, so it always shows them.
@@ -347,7 +402,8 @@
     paid:      { bg: 'var(--blue)',   icon: CHECK, ok: 'var(--blue)' },
     paycheck:  { bg: 'var(--green)',  icon: '💵',  ok: 'var(--green)' },
     overdraft: { bg: 'var(--orange)', icon: '✋',  ok: 'var(--orange)' },
-    unknown:   { bg: 'var(--grey)',   icon: '❓',  ok: 'var(--blue)' }
+    unknown:   { bg: 'var(--grey)',   icon: '❓',  ok: 'var(--blue)' },
+    ask:       { bg: '#5e5ce6',       icon: '🛒',  ok: '#5e5ce6' }
   };
   let spoken = '';
 
@@ -355,6 +411,10 @@
     const s = STYLES[r.kind];
     $('oBadge').style.background = s.bg;
     $('oBadge').innerHTML = s.icon;
+    $('yn').hidden = !r.yn; $('ynRow').hidden = false;
+    $('ynFb').textContent = ''; $('ynFb').className = 'quiz-fb';
+    $('oOk').hidden = !!r.yn; $('oOk').textContent = L().ok;
+    if (!r.yn) pending = null;
     $('oTitle').textContent = r.kind === 'overdraft' ? '' : r.title;
     $('oTitle').style.display = r.kind === 'overdraft' ? 'none' : '';
     $('oAmount').textContent = r.amount || '';
@@ -362,7 +422,8 @@
     $('oDetail').innerHTML = r.detail || '';
     $('oOk').style.background = s.ok;
     $('oSay').style.display = state.showSpeak && 'speechSynthesis' in window ? '' : 'none';
-    spoken = [r.kind === 'overdraft' ? '' : r.title, r.msg, (r.detail || '').replace(/<br>/g, ' ')].filter(Boolean).join(' ');
+    spoken = r.yn ? r.detail + ' ' + r.title
+      : [r.kind === 'overdraft' ? '' : r.title, r.msg, (r.detail || '').replace(/<br>/g, ' ')].filter(Boolean).join(' ');
     quiz = r.quiz || null;
     $('quiz').hidden = !quiz;
     if (quiz) { $('qLabel').textContent = quiz.question; $('quiz').style.setProperty('--qc', s.ok); }
@@ -373,12 +434,17 @@
     const b = $('oBadge'); b.style.animation = 'none'; b.offsetHeight; b.style.animation = '';
     $('overlay').classList.add('show');
     $('overlay').scrollTop = 0;
-    $('oOk').focus();
+    (r.yn ? $('ynYes') : $('oOk')).focus();
   }
-  $('oOk').onclick = () => { $('overlay').classList.remove('show'); try { speechSynthesis.cancel(); } catch (e) {} };
+  $('oOk').onclick = () => {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    if (pending && pending.answered) { const tg = pending.tag; pending = null; return buyItem(tg); }
+    pending = null;
+    $('overlay').classList.remove('show'); try { speechSynthesis.cancel(); } catch (e) {} };
   $('oSay').onclick = () => {
     let text = spoken;
     if (quiz) text += ' ' + quiz.question + ' ' + $('qFb').textContent;
+    if (pending) text += ' ' + $('ynFb').textContent;
     try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = L().locale; u.rate = 0.9; speechSynthesis.speak(u); } catch (e) {}
   };
 
@@ -451,6 +517,7 @@
     $('sBalance').value = (state.balance / 100).toFixed(2);
     $('sDetail').checked = state.showDetail;
     $('sSpeak').checked = state.showSpeak;
+    $('sEnough').checked = state.askEnough;
     $('sAsk').checked = state.askNeed;
     $('sMath').checked = state.askMath;
     paintLang();
@@ -467,6 +534,7 @@
   $('sClear').onclick = () => { if (confirm('Clear the recent list?')) { state.history = []; save(); render(); } };
   $('sDetail').onchange = e => { state.showDetail = e.target.checked; save(); };
   $('sSpeak').onchange = e => { state.showSpeak = e.target.checked; save(); };
+  $('sEnough').onchange = e => { state.askEnough = e.target.checked; save(); };
   $('sAsk').onchange = e => { state.askNeed = e.target.checked; save(); };
   $('sMath').onchange = e => { state.askMath = e.target.checked; save(); };
   function paintLang() { document.querySelectorAll('#sLang button').forEach(b => b.classList.toggle('on', b.dataset.v === (state.lang || 'en'))); }
