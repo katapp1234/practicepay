@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PracticePay</title>
 <meta name="apple-mobile-web-app-title" content="PracticePay">
@@ -21,6 +22,7 @@
 
   header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 12px; }
   .brand { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; }
+  .beta { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #000; background: var(--orange); border-radius: 999px; padding: 3px 8px; }
   .brand img { width: 36px; height: 36px; border-radius: 9px; }
   .lock { position: relative; width: 44px; height: 44px; border-radius: 50%; border: none;
     background: var(--panel); color: var(--muted); font-size: 18px; user-select: none; -webkit-user-select: none;
@@ -110,7 +112,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><img src="icon.svg" alt="">PracticePay</div>
+    <div class="brand"><img src="icon.svg" alt="">PracticePay<span class="beta">Beta</span></div>
     <button class="lock" id="lock" aria-label="Helper settings: press and hold">
       <svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"/></svg>🔒
     </button>
@@ -190,7 +192,7 @@
       <a class="btn" href="guide.html" style="display: block; text-align: center; text-decoration: none">Open the PracticePay guide</a>
     </div>
 
-    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay version 1.7</p>
+    <p style="text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 0">PracticePay Beta · version 0.8.1</p>
 
   </div>
 </div>
